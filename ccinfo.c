@@ -1,16 +1,4 @@
-#ifdef WIN32
-#undef UNICODE
-#endif
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef __APPLE__
-#include <PCSC/winscard.h>
-#include <PCSC/wintypes.h>
-#else
-#include <winscard.h>
-#endif
+#include "./ccinfo.h"
 
 #ifdef WIN32
 static char *pcsc_stringify_error(LONG rv)
@@ -39,10 +27,29 @@ int main(void)
  DWORD dwReaders, dwActiveProtocol, dwRecvLength;
 
  SCARD_IO_REQUEST pioSendPci;
- BYTE pbRecvBuffer[258];
- BYTE cmd1[] = {  0x00, 0xA4, 0x04, 0x00, 0x08, 0xA0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00 };
 
  unsigned int i;
+
+//#################
+struct byteStream test;
+BYTE testInput[] = { 0x6F, 0x33 , 0x84 , 0x0E , 0x32 , 0x50 , 0x41 , 0x59 , 0x2E , 0x53 , 0x59 , 0x53 , 0x2E , 0x44 , 0x44 , 0x46 , 0x30 , 0x31 , 0xA5 , 0x21 , 0xBF , 0x0C , 0x1E , 0x61 , 0x1C , 0x4F , 0x07 , 0xA0 , 0x00 , 0x00 , 0x00 , 0x03 , 0x10 , 0x10 , 0x50 , 0x0E , 0x63 , 0x6F , 0x6D , 0x64 , 0x69 , 0x72 , 0x65 , 0x63 , 0x74 , 0x20 , 0x56 , 0x69 , 0x73 , 0x61 , 0x87 , 0x01 , 0x01 , 0x90 , 0x00};
+
+getByteStreamByOneByteId(&test,testInput,fileControlInformationId);
+printf("######\n");
+ printf("TEST %0x: ",&test.length);
+ for(i=0; i < test.length; i++)
+   printf("%02X ",test.value[i]);
+ printf("\n");
+
+struct byteStream test2;
+getByteStreamByOneByteId(&test2,test.value,dedicatedFileName);
+printf("######\n");
+ printf("TEST2 %0x: ",&test2.length);
+ for(i=0; i < test2.length; i++)
+   printf("%02X ",test2.value[i]);
+ printf("\n");
+
+//#################
 
  rv = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
  CHECK("SCardEstablishContext", rv)
@@ -76,10 +83,20 @@ int main(void)
    pioSendPci = *SCARD_PCI_T1;
    break;
  }
+
+ BYTE aidPPSE[] = {0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E , 0x44, 0x44, 0x46, 0x30, 0x31};
+ BYTE selectPPSE[sizeof(aidPPSE) + 6] = { cla , ins, p1, p2, lc};
+ memcpy(selectPPSE+5 , aidPPSE, sizeof(aidPPSE));
+
+
  dwRecvLength = sizeof(pbRecvBuffer);
- rv = SCardTransmit(hCard, &pioSendPci, cmd1, sizeof(cmd1),
+ rv = SCardTransmit(hCard, &pioSendPci, selectPPSE, sizeof(selectPPSE),
   NULL, pbRecvBuffer, &dwRecvLength);
  CHECK("SCardTransmit", rv)
+
+ printf("cmd: ");
+ for(i=0; i<sizeof(selectPPSE); i++)
+  printf("%02X ", selectPPSE[i]);
 
  printf("response: ");
  for(i=0; i<dwRecvLength; i++)
@@ -104,3 +121,21 @@ int main(void)
  return 0;
 }
 
+int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id)
+  {
+  static int lengthPosition = 1;
+  if (input[0] == id)
+    {
+    ccStream->length = (int)input[lengthPosition];
+    if (ccStream->length > 0 )
+      {
+      ccStream->value = (BYTE*)malloc(ccStream->length);
+      for (int i=0 ; i < ccStream->length ; i++)
+        {
+        ccStream->value[i] = input[lengthPosition + 1 + i];
+        }
+      return(0);
+      }
+    }
+  return(255);
+  }
