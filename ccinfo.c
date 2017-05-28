@@ -121,6 +121,23 @@ printf("######\n");
  return 0;
 }
 
+bool isOneByteTlv (struct byteStream *tlvStream) {
+
+  BYTE firstByte = tlvStream->value[0]; 
+
+  if (firstByte >= 128 )
+     firstByte=firstByte-128;
+  if (firstByte >= 64)
+    firstByte=firstByte-64;
+  if (firstByte=firstByte-64)
+    firstByte=firstByte-32;
+ 
+  if (firstByte > 31)
+    return(false);
+
+  return(true);
+}
+
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id)
   {
   static int lengthPosition = 1;

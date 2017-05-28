@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #ifdef __APPLE__
 #include <PCSC/winscard.h>
@@ -36,3 +37,4 @@ struct byteStream {
 };
 
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id);
+bool isOneByteTlv (struct byteStream *tlvStream);
