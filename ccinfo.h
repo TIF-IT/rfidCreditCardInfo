@@ -36,5 +36,19 @@ struct byteStream {
   unsigned int length;
 };
 
+struct emvTag {
+  char name[255];
+  BYTE tag[1];
+};
+
+struct emvTag emvTags[6] = {
+    {"File Control Information (FCI) Template", 0x6f},
+    {"Dedicated File (DF) Name", 0x84},
+    {"File Control Information (FCI) Proprietary Template", 0xa5},
+    {"Application Template", 0x61},
+    {"Application Identifier (AID) – card", 0x4F},
+    {"Application Label", 0x50},
+  };
+
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id);
 bool isOneByteTlv (struct byteStream *tlvStream);
