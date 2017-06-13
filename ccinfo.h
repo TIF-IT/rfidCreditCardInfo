@@ -38,17 +38,25 @@ struct byteStream {
 
 struct emvTag {
   char name[255];
-  BYTE tag[1];
+  BYTE tag0;
+  BYTE tag1;
 };
 
-struct emvTag emvTags[6] = {
-    {"File Control Information (FCI) Template", 0x6f},
-    {"Dedicated File (DF) Name", 0x84},
-    {"File Control Information (FCI) Proprietary Template", 0xa5},
-    {"Application Template", 0x61},
-    {"Application Identifier (AID) – card", 0x4F},
-    {"Application Label", 0x50},
+static struct emvTag unknownEmvTag = {"unknwon", 0x00, 0x00};
+
+static unsigned int emvTagCount = 7;
+static struct emvTag emvTags[7] = {
+    // one byte tags
+    {"File Control Information (FCI) Template", 0x6f, 0x00},
+    {"Dedicated File (DF) Name", 0x84, 0x00},
+    {"File Control Information (FCI) Proprietary Template", 0xa5, 0x00},
+    {"Application Template", 0x61, 0x00},
+    {"Application Identifier (AID) – card", 0x4F, 0x00},
+    {"Application Label", 0x50, 0x00},
+    // two byte tags
+    {"Issuer Discretinary Data", 0xBF, 0x0C}
   };
 
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id);
-bool isOneByteTlv (struct byteStream *tlvStream);
+bool isOneByteTlv (struct byteStream tlvStream);
+struct emvTag getEmvTag(struct byteStream ccStream);

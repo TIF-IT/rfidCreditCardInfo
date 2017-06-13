@@ -34,15 +34,25 @@ int main(void)
 struct byteStream test;
 BYTE testInput[] = { 0x6F, 0x33 , 0x84 , 0x0E , 0x32 , 0x50 , 0x41 , 0x59 , 0x2E , 0x53 , 0x59 , 0x53 , 0x2E , 0x44 , 0x44 , 0x46 , 0x30 , 0x31 , 0xA5 , 0x21 , 0xBF , 0x0C , 0x1E , 0x61 , 0x1C , 0x4F , 0x07 , 0xA0 , 0x00 , 0x00 , 0x00 , 0x03 , 0x10 , 0x10 , 0x50 , 0x0E , 0x63 , 0x6F , 0x6D , 0x64 , 0x69 , 0x72 , 0x65 , 0x63 , 0x74 , 0x20 , 0x56 , 0x69 , 0x73 , 0x61 , 0x87 , 0x01 , 0x01 , 0x90 , 0x00};
 
-getByteStreamByOneByteId(&test,testInput,fileControlInformationId);
+struct byteStream testInputStream;
+testInputStream.length=51;
+testInputStream.value = testInput;
+
+printf("oneByte %i",isOneByteTlv(testInputStream));
+printf("\nTAG: %s \n",getEmvTag(testInputStream).name);
+
+getByteStreamByOneByteId(&test,testInputStream.value,fileControlInformationId);
 printf("######\n");
  printf("TEST %0x: ",&test.length);
  for(i=0; i < test.length; i++)
    printf("%02X ",test.value[i]);
  printf("\n");
 
+printf("oneByte %i",isOneByteTlv(test));
+printf("\nTAG: %s \n",getEmvTag(test).name);
+
 struct byteStream test2;
-getByteStreamByOneByteId(&test2,test.value,dedicatedFileName);
+getByteStreamByOneByteId(&test2,test.value,getEmvTag(test).tag0);
 printf("######\n");
  printf("TEST2 %0x: ",&test2.length);
  for(i=0; i < test2.length; i++)
@@ -121,22 +131,40 @@ printf("######\n");
  return 0;
 }
 
-bool isOneByteTlv (struct byteStream *tlvStream) {
-
-  BYTE firstByte = tlvStream->value[0]; 
-
+bool isOneByteTlv (struct byteStream tlvStream)
+  {
+  int firstByte = (int) tlvStream.value[0]; 
   if (firstByte >= 128 )
-     firstByte=firstByte-128;
+    firstByte = firstByte - 128;
   if (firstByte >= 64)
-    firstByte=firstByte-64;
-  if (firstByte=firstByte-64)
-    firstByte=firstByte-32;
- 
+    firstByte=firstByte - 64;
+  if (firstByte >= 32)
+    firstByte=firstByte - 32;
+  
   if (firstByte > 31)
     return(false);
 
   return(true);
-}
+  }
+
+struct emvTag getEmvTag(struct byteStream ccStream)
+  {
+  BYTE tag[2];
+  for (int i=0 ; i < emvTagCount ; i++)
+    {
+    tag[0]=ccStream.value[0];
+    tag[1]=ccStream.value[1];
+    if (isOneByteTlv(ccStream))
+      {
+      tag[1]=0x00;
+      }
+    if (tag[0] == emvTags[i].tag0 && tag[1] == emvTags[i].tag1)
+      {
+      return emvTags[i];
+      }
+    }
+  return unknownEmvTag;
+  }
 
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id)
   {
