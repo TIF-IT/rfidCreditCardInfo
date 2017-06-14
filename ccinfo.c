@@ -168,7 +168,10 @@ struct emvTag getEmvTag(struct byteStream ccStream)
 
 int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id)
   {
-  static int lengthPosition = 1;
+  int lengthPosition = 2;
+  //if (isOneByteTlv())
+    lengthPosition = 1;
+
   if (input[0] == id)
     {
     ccStream->length = (int)input[lengthPosition];
