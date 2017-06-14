@@ -57,6 +57,6 @@ static struct emvTag emvTags[7] = {
     {"Issuer Discretinary Data", 0xBF, 0x0C}
   };
 
-int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id);
+int getByteStream(struct byteStream *ccStream, struct byteStream input, BYTE id);
 bool isOneByteTlv (struct byteStream tlvStream);
 struct emvTag getEmvTag(struct byteStream ccStream);

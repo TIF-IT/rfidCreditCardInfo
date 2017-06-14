@@ -31,6 +31,15 @@ int main(void)
  unsigned int i;
 
 //#################
+//oneByte 1
+//TAG: File Control Information (FCI) Template 
+//######
+//TEST 2a356ea8: 84 0E 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 A5 21 BF 0C 1E 61 1C 4F 07 A0 00 00 00 03 10 10 50 0E 63 6F 6D 64 69 72 65 63 74 20 56 69 73 61 87 01 01 
+//oneByte 1
+//TAG: Dedicated File (DF) Name 
+//######
+//TEST2 2a356e48: 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 
+
 struct byteStream test;
 BYTE testInput[] = { 0x6F, 0x33 , 0x84 , 0x0E , 0x32 , 0x50 , 0x41 , 0x59 , 0x2E , 0x53 , 0x59 , 0x53 , 0x2E , 0x44 , 0x44 , 0x46 , 0x30 , 0x31 , 0xA5 , 0x21 , 0xBF , 0x0C , 0x1E , 0x61 , 0x1C , 0x4F , 0x07 , 0xA0 , 0x00 , 0x00 , 0x00 , 0x03 , 0x10 , 0x10 , 0x50 , 0x0E , 0x63 , 0x6F , 0x6D , 0x64 , 0x69 , 0x72 , 0x65 , 0x63 , 0x74 , 0x20 , 0x56 , 0x69 , 0x73 , 0x61 , 0x87 , 0x01 , 0x01 , 0x90 , 0x00};
 
@@ -41,7 +50,7 @@ testInputStream.value = testInput;
 printf("oneByte %i",isOneByteTlv(testInputStream));
 printf("\nTAG: %s \n",getEmvTag(testInputStream).name);
 
-getByteStreamByOneByteId(&test,testInputStream.value,fileControlInformationId);
+getByteStream(&test,testInputStream,fileControlInformationId);
 printf("######\n");
  printf("TEST %0x: ",&test.length);
  for(i=0; i < test.length; i++)
@@ -52,7 +61,7 @@ printf("oneByte %i",isOneByteTlv(test));
 printf("\nTAG: %s \n",getEmvTag(test).name);
 
 struct byteStream test2;
-getByteStreamByOneByteId(&test2,test.value,getEmvTag(test).tag0);
+getByteStream(&test2,test,getEmvTag(test).tag0);
 printf("######\n");
  printf("TEST2 %0x: ",&test2.length);
  for(i=0; i < test2.length; i++)
@@ -166,21 +175,22 @@ struct emvTag getEmvTag(struct byteStream ccStream)
   return unknownEmvTag;
   }
 
-int getByteStreamByOneByteId(struct byteStream *ccStream, BYTE input[], BYTE id)
+int getByteStream(struct byteStream *ccStream, struct byteStream input, BYTE id)
   {
   int lengthPosition = 2;
-  //if (isOneByteTlv())
-    lengthPosition = 1;
-
-  if (input[0] == id)
+    if (isOneByteTlv(input))
+      {
+      lengthPosition = 1;
+      }
+  if (input.value[0] == id)
     {
-    ccStream->length = (int)input[lengthPosition];
+    ccStream->length = (int)input.value[lengthPosition];
     if (ccStream->length > 0 )
       {
       ccStream->value = (BYTE*)malloc(ccStream->length);
       for (int i=0 ; i < ccStream->length ; i++)
         {
-        ccStream->value[i] = input[lengthPosition + 1 + i];
+        ccStream->value[i] = input.value[lengthPosition + 1 + i];
         }
       return(0);
       }
