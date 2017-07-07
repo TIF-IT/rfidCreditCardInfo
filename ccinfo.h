@@ -31,11 +31,6 @@ BYTE p2 = 0x00;
 BYTE lc = 0x0E;
 BYTE le = 0x00;
 
-struct byteStream {
-  BYTE *value;
-  unsigned int length;
-};
-
 struct emvTag {
   char name[255];
   BYTE tag0;
@@ -57,6 +52,13 @@ static struct emvTag emvTags[7] = {
     {"Issuer Discretinary Data", 0xBF, 0x0C}
   };
 
-int getByteStream(struct byteStream *ccStream, struct byteStream input, BYTE id);
+struct byteStream {
+  BYTE *value;
+  unsigned int length;
+  struct emvTag tag;
+};
+
+int getByteStream(struct byteStream *ccStream, struct byteStream input, struct emvTag id);
 bool isOneByteTlv (struct byteStream tlvStream);
 struct emvTag getEmvTag(struct byteStream ccStream);
+void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream);

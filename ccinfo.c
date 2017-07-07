@@ -3,7 +3,7 @@
 #ifdef WIN32
 static char *pcsc_stringify_error(LONG rv)
 {
- static char out[20];
+ static char out[255];
  sprintf_s(out, sizeof(out), "0x%08X", rv);
 
  return out;
@@ -47,10 +47,44 @@ struct byteStream testInputStream;
 testInputStream.length=51;
 testInputStream.value = testInput;
 
+//
+struct byteStream out[64];
+int anzAll = 0;
+printf("\nSTART FIND ALL TAGS\n");
+findAllTags(testInputStream,&out,&anzAll);
+for (int i = 0; i < anzAll; i++)
+  {
+  printf("\n\n");
+  printf("TAG: %s\n",out[i].tag.name);
+  printf("length: %i\n",out[i].length);
+  printf("HEX  : ");
+  for (int k = 0; k < out[i].length; k++)
+    {
+    printf("%02X, ",out[i].value[k]);
+    }
+  printf("\n");
+  printf("TEXT : ");
+  for (int k = 0; k < out[i].length; k++)
+    {
+    if(out[i].value[k] >= 32 && out[i].value[k] <= 126 )
+      {
+      printf(" %c, ",out[i].value[k]);
+      }
+    else
+      {
+      printf("  , ");
+      }
+    }
+  printf("\n");
+  }
+
+
+//
+/*
 printf("oneByte %i",isOneByteTlv(testInputStream));
 printf("\nTAG: %s \n",getEmvTag(testInputStream).name);
 
-getByteStream(&test,testInputStream,fileControlInformationId);
+getByteStream(&test,testInputStream,getEmvTag(testInputStream));
 printf("######\n");
  printf("TEST %0x: ",&test.length);
  for(i=0; i < test.length; i++)
@@ -61,13 +95,13 @@ printf("oneByte %i",isOneByteTlv(test));
 printf("\nTAG: %s \n",getEmvTag(test).name);
 
 struct byteStream test2;
-getByteStream(&test2,test,getEmvTag(test).tag0);
+getByteStream(&test2,test,getEmvTag(test));
 printf("######\n");
  printf("TEST2 %0x: ",&test2.length);
  for(i=0; i < test2.length; i++)
    printf("%02X ",test2.value[i]);
  printf("\n");
-
+*/
 //#################
 
  rv = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
@@ -140,6 +174,63 @@ printf("######\n");
  return 0;
 }
 
+void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream)
+  {
+  if (ccStream.length > 2 && strcmp(getEmvTag(ccStream).name,unknownEmvTag.name) != 0)
+    {
+    struct byteStream partStream;
+    //printf("\n################################################################\n");
+    //printf("EMV TAG IN: %s \n",getEmvTag(ccStream).name);
+    //printf("ccStream.length: %i\n",ccStream.length);
+    //printf("isOneByte %i\n",isOneByteTlv(ccStream));
+    //printf("ccStream.length: %i\n",ccStream.length);
+    //printf("anzOutStream: %i\n",*anzOutStream); // DEBUG
+    getByteStream(&partStream,ccStream,getEmvTag(ccStream));
+    //printf("EMV TAG OUT: %s \n",getEmvTag(partStream).name);
+    //printf("partStream.length: %i\n",partStream.length);
+    //printf("outStream[%i].length: %i\n",*anzOutStream, outStream[*anzOutStream].length);
+    //printf("outStream[%i].value = (BYTE*)malloc(%i)\n",*anzOutStream,partStream.length); //DEBUG
+    outStream[*anzOutStream].value = (BYTE*)malloc(partStream.length);
+    outStream[*anzOutStream].length = partStream.length;
+    outStream[*anzOutStream].tag = getEmvTag(ccStream);
+    //printf("start cpy part to out stream\n");  //DEBUG
+    for (int i=0 ; i < partStream.length ; i++)
+      {
+      //printf("outStream[%i]->value[%i] = partStream.value[%i]: %02X \n",*anzOutStream,i,i,partStream.value[i]);      
+      outStream[*anzOutStream].value[i] = partStream.value[i];
+      }
+    //printf("END for loop\n");
+    ++*(anzOutStream);
+    //printf("call findAllTags with result\n");
+    findAllTags(partStream,outStream,anzOutStream);
+
+    int restPos = 0;
+    if (isOneByteTlv(ccStream))
+      {
+      restPos = partStream.length + 2;
+      }
+    else
+      {
+      restPos = partStream.length + 3;
+      }
+    //printf("restPos: %i\n",restPos);
+    //printf("(ccStream.length - restPos): %i\n",(int)(ccStream.length - restPos));
+    if ( (int)(ccStream.length - restPos)  > 0 )
+      {
+      struct byteStream rest;
+      rest.length = ccStream.length - restPos;
+      //printf("rest.length: %i\n",rest.length);
+      rest.value = (BYTE*)malloc(rest.length);
+      for (int i = 0 ; i < rest.length ; i++)
+        {
+        rest.value[i] = ccStream.value[i + restPos];
+        }
+      //printf("call findAllTags with rest\n");
+      findAllTags(rest,outStream,anzOutStream);
+      }
+    }  
+  }
+
 bool isOneByteTlv (struct byteStream tlvStream)
   {
   int firstByte = (int) tlvStream.value[0]; 
@@ -150,7 +241,7 @@ bool isOneByteTlv (struct byteStream tlvStream)
   if (firstByte >= 32)
     firstByte=firstByte - 32;
   
-  if (firstByte > 31)
+  if (firstByte >= 31)
     return(false);
 
   return(true);
@@ -175,25 +266,31 @@ struct emvTag getEmvTag(struct byteStream ccStream)
   return unknownEmvTag;
   }
 
-int getByteStream(struct byteStream *ccStream, struct byteStream input, BYTE id)
+int getByteStream(struct byteStream *ccStream, struct byteStream input, struct emvTag id)
   {
   int lengthPosition = 2;
     if (isOneByteTlv(input))
       {
       lengthPosition = 1;
-      }
-  if (input.value[0] == id)
-    {
-    ccStream->length = (int)input.value[lengthPosition];
-    if (ccStream->length > 0 )
-      {
-      ccStream->value = (BYTE*)malloc(ccStream->length);
-      for (int i=0 ; i < ccStream->length ; i++)
+      if (input.value[0] != id.tag0)
         {
-        ccStream->value[i] = input.value[lengthPosition + 1 + i];
+        return(254);
         }
-      return(0);
       }
+    else // is two byte tlv
+      {
+      if (input.value[0] != id.tag0 || input.value[1] != id.tag1)
+        return(254);
+      }
+  ccStream->length = (int)input.value[lengthPosition]; // -1 ???
+  if (ccStream->length > 0 )
+    {
+    ccStream->value = (BYTE*)malloc(ccStream->length);
+    for (int i=0 ; i < ccStream->length  ; i++)
+      {
+      ccStream->value[i] = input.value[lengthPosition + 1 + i]; 
+      //printf("     ccStream->value[%i] = input.value[%i]: %02X \n",i,i,ccStream->value[i]);      
+      }
+    return(0);
     }
-  return(255);
   }
