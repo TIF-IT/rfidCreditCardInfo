@@ -39,7 +39,7 @@ int main(void)
 //TAG: Dedicated File (DF) Name 
 //######
 //TEST2 2a356e48: 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 
-
+/*
 struct byteStream test;
 BYTE testInput[] = { 0x6F, 0x33 , 0x84 , 0x0E , 0x32 , 0x50 , 0x41 , 0x59 , 0x2E , 0x53 , 0x59 , 0x53 , 0x2E , 0x44 , 0x44 , 0x46 , 0x30 , 0x31 , 0xA5 , 0x21 , 0xBF , 0x0C , 0x1E , 0x61 , 0x1C , 0x4F , 0x07 , 0xA0 , 0x00 , 0x00 , 0x00 , 0x03 , 0x10 , 0x10 , 0x50 , 0x0E , 0x63 , 0x6F , 0x6D , 0x64 , 0x69 , 0x72 , 0x65 , 0x63 , 0x74 , 0x20 , 0x56 , 0x69 , 0x73 , 0x61 , 0x87 , 0x01 , 0x01 , 0x90 , 0x00};
 
@@ -77,7 +77,8 @@ for (int i = 0; i < anzAll; i++)
     }
   printf("\n");
   }
-
+printf("###################################################################\n");
+*/
 
 //
 /*
@@ -138,7 +139,7 @@ printf("######\n");
  }
 
  BYTE aidPPSE[] = {0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E , 0x44, 0x44, 0x46, 0x30, 0x31};
- BYTE selectPPSE[sizeof(aidPPSE) + 6] = { cla , ins, p1, p2, lc};
+ BYTE selectPPSE[sizeof(aidPPSE) + 6] = { cla , ins, p1, p2, lcPPSE};
  memcpy(selectPPSE+5 , aidPPSE, sizeof(aidPPSE));
 
 
@@ -155,6 +156,173 @@ printf("######\n");
  for(i=0; i<dwRecvLength; i++)
   printf("%02X ", pbRecvBuffer[i]);
  printf("\n");
+
+ if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
+   BYTE myGetResponse[5];
+   memcpy(myGetResponse,getResponse,getResponseLength);
+   myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
+   dwRecvLength=sizeof(pbRecvBuffer);
+   rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
+     pbRecvBuffer,&dwRecvLength);
+
+   printf("cmd: ");
+   for(i=0; i < getResponseLength; i++)
+     printf("%02X ", myGetResponse[i]);
+
+   printf("response: ");
+   for(i=0; i<dwRecvLength; i++)
+     printf("%02X ", pbRecvBuffer[i]);
+   printf("\n");
+  }
+ 
+  struct byteStream selectPpseResponse;
+  selectPpseResponse.length=dwRecvLength;
+  selectPpseResponse.value = (BYTE*)malloc(selectPpseResponse.length);
+  memcpy(selectPpseResponse.value,pbRecvBuffer,dwRecvLength);
+
+  struct byteStream outPPSE[64];
+  int anzPPSE = 0;
+
+  findAllTags(selectPpseResponse,&outPPSE,&anzPPSE);
+  for (int i = 0; i < anzPPSE; i++)
+    {
+    printf("\n\n");
+    printf("PPSE TAG: %s\n",outPPSE[i].tag.name);
+    printf("PPSE length: %i\n",outPPSE[i].length);
+    printf("PPSE HEX  : ");
+    for (int k = 0; k < outPPSE[i].length; k++)
+      {
+      printf("%02X, ",outPPSE[i].value[k]);
+      }
+    printf("\n");
+    printf("PPSE TEXT : ");
+    for (int k = 0; k < outPPSE[i].length; k++)
+      {
+      if(outPPSE[i].value[k] >= 32 && outPPSE[i].value[k] <= 126 )
+        {
+        printf(" %c, ",outPPSE[i].value[k]);
+        }
+      else
+        {
+        printf("  , ");
+        }
+      }
+    printf("\n");
+    }
+
+  for (int i = 0; i < anzPPSE; i++)
+    {
+    if(strcmp(outPPSE[i].tag.name,"Application Identifier (AID) – card") == 0) 
+      {
+      BYTE aid[outPPSE[i].length];
+      memcpy(aid,outPPSE[i].value,outPPSE[i].length);
+      
+      
+      BYTE selectFileCC[outPPSE[i].length + 6]; 
+      selectFileCC[0] = cla; 
+      selectFileCC[1] = ins;
+      selectFileCC[2] = p1;
+      selectFileCC[3] = p2;
+      selectFileCC[4] = (BYTE) outPPSE[i].length;
+      memcpy(selectFileCC+5 , outPPSE[i].value, outPPSE[i].length);
+      
+      printf("cmd: ");
+      for(i=0; i < sizeof(selectFileCC); i++)
+        printf("%02X ", selectFileCC[i]);
+
+      dwRecvLength=sizeof(pbRecvBuffer);
+      rv = SCardTransmit(hCard, &pioSendPci, selectFileCC, sizeof(selectFileCC), NULL,
+      pbRecvBuffer,&dwRecvLength);
+
+      printf("response: ");
+      for(int i=0; i<dwRecvLength; i++){
+        printf("%02X ", pbRecvBuffer[i]);
+      }
+      printf("\n");
+      // Pruefen auf 90 00 !!!! TODO
+      if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
+        BYTE myGetResponse[5];
+        memcpy(myGetResponse,getResponse,getResponseLength);
+        myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
+        dwRecvLength=sizeof(pbRecvBuffer);
+        rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
+        pbRecvBuffer,&dwRecvLength);
+
+        printf("cmd: ");
+        for(int i=0; i < getResponseLength; i++)
+          printf("%02X ", myGetResponse[i]);
+
+        printf("response: ");
+        for(int i=0; i<dwRecvLength; i++)
+           printf("%02X ", pbRecvBuffer[i]);
+        printf("\n");
+      }
+
+      BYTE readRecordCC[] = {0x00, 0xB2, 0x02, 0x0C, 0x00};
+      dwRecvLength = sizeof(pbRecvBuffer);
+      rv = SCardTransmit(hCard, &pioSendPci, readRecordCC, sizeof(readRecordCC), NULL,
+      pbRecvBuffer,&dwRecvLength);
+
+     
+      printf("cmd: ");
+      for(int i=0; i < sizeof(readRecordCC); i++)
+        printf("%02X ", readRecordCC[i]);
+
+      printf("response: ");
+      for(int i=0; i<dwRecvLength; i++)
+        printf("%02X ", pbRecvBuffer[i]);
+      printf("\n");
+
+       
+       if (pbRecvBuffer[dwRecvLength -2] == wrongLength){
+         BYTE readRecordCC[] = {0x00, 0xB2, 0x02, 0x0C, pbRecvBuffer[dwRecvLength-1]};
+         dwRecvLength = sizeof(pbRecvBuffer);
+         rv = SCardTransmit(hCard, &pioSendPci, readRecordCC, sizeof(readRecordCC), NULL,
+         pbRecvBuffer,&dwRecvLength);
+     
+         printf("cmd: ");
+         for(int i=0; i < sizeof(readRecordCC); i++)
+           printf("%02X ", readRecordCC[i]);
+
+         printf("response: ");
+         for(int i=0; i<dwRecvLength; i++)
+           printf("%02X ", pbRecvBuffer[i]);
+         printf("\n");
+       }
+
+       if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
+        BYTE myGetResponse[5];
+        memcpy(myGetResponse,getResponse,getResponseLength);
+        myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
+        dwRecvLength=sizeof(pbRecvBuffer);
+        rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
+        pbRecvBuffer,&dwRecvLength);
+
+        printf("cmd: ");
+        for(int i=0; i < getResponseLength; i++)
+          printf("%02X ", myGetResponse[i]);
+
+        printf("response: ");
+        for(int i=0; i<dwRecvLength; i++)
+           printf("%02X ", pbRecvBuffer[i]);
+        printf("\n");
+      }
+
+     for (int k = 0; k < dwRecvLength; k++)
+      {
+      if(pbRecvBuffer[k] >= 32 && pbRecvBuffer[k] <= 126 )
+        {
+        printf(" %c, ",pbRecvBuffer[k]);
+        }
+      else
+        {
+        printf("  , ");
+        }
+      }
+    printf("\n");
+
+    }
+  }
 
  rv = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
  CHECK("SCardDisconnect", rv)
