@@ -122,15 +122,16 @@ printf("######\n");
  CHECK("SCardListReaders", rv)
 #endif
 
+*(mszReaders + strlen(mszReaders) + 1)  = ";";
+
 char *ptr;
-ptr = strtok(mszReaders, "\0");
+ptr = strtok(mszReaders, ";");
 
 while(ptr != NULL) {
 	printf("reader name: %s\n", ptr);
 	// naechsten Abschnitt erstellen
- 	ptr = strtok(NULL, "\0");
+ 	ptr = strtok(NULL, ";");
 }
-
 
  rv = SCardConnect(hContext, mszReaders, SCARD_SHARE_SHARED,
   SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &hCard, &dwActiveProtocol);
