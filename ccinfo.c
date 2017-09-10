@@ -121,7 +121,16 @@ printf("######\n");
  rv = SCardListReaders(hContext, NULL, mszReaders, &dwReaders);
  CHECK("SCardListReaders", rv)
 #endif
- printf("reader name: %s\n", mszReaders);
+
+char *ptr;
+ptr = strtok(mszReaders, "\0");
+
+while(ptr != NULL) {
+	printf("reader name: %s\n", ptr);
+	// naechsten Abschnitt erstellen
+ 	ptr = strtok(NULL, "\0");
+}
+
 
  rv = SCardConnect(hContext, mszReaders, SCARD_SHARE_SHARED,
   SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &hCard, &dwActiveProtocol);
@@ -341,6 +350,16 @@ printf("######\n");
 
  return 0;
 }
+
+void getMoreBytes(SCARDHANDLE card, SCARD_IO_REQUEST pioSendPci,DWORD dwRecvLength)
+  {
+  BYTE myGetResponse[5];
+  memcpy(myGetResponse,getResponse,getResponseLength);
+  myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
+  dwRecvLength=sizeof(pbRecvBuffer);
+  SCardTransmit(card, &pioSendPci, myGetResponse, getResponseLength, NULL,
+  pbRecvBuffer,&dwRecvLength);
+  }
 
 void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream)
   {
