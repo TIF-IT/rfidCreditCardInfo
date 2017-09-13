@@ -28,6 +28,9 @@ static BYTE issuerDiscretinaryData[] = { 0xBF , 0x0C };
 static BYTE getResponse[]  = {0x00, 0xc0, 0x00, 0x00, 0x00};
 static int getResponseLength = 5;
 
+SCARDHANDLE hCard;
+SCARD_IO_REQUEST pioSendPci;
+DWORD dwReaders,dwActiveProtocol, dwRecvLength;
 BYTE pbRecvBuffer[258];
 BYTE cla = 0x00; //iso 7816
 BYTE ins = 0xA4;
@@ -64,6 +67,7 @@ struct byteStream {
 };
 
 int getByteStream(struct byteStream *ccStream, struct byteStream input, struct emvTag id);
+void getMoreBytes();
 bool isOneByteTlv (struct byteStream tlvStream);
 struct emvTag getEmvTag(struct byteStream ccStream);
 void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream);
