@@ -67,6 +67,8 @@ struct byteStream {
 };
 
 
+void printByteArray(BYTE cmd[], int size, char name[]);
+void printApplicationLabel(int anzPPSE, struct byteStream outPPSE[]);
 void printAllTags(int anzPPSE, struct byteStream outPPSE[]);
 int getByteStream(struct byteStream *ccStream, struct byteStream input, struct emvTag id);
 void getMoreBytes();

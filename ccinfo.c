@@ -78,17 +78,15 @@ printf("reader name: %s\n", mszReaders);
   NULL, pbRecvBuffer, &dwRecvLength);
  CHECK("SCardTransmit", rv)
 
- printf("cmd: ");
- for(i=0; i<sizeof(selectPPSE); i++)
-  printf("%02X ", selectPPSE[i]);
-
- printf("response: ");
- for(i=0; i<dwRecvLength; i++)
-  printf("%02X ", pbRecvBuffer[i]);
- printf("\n");
+ //DEBUG 
+ //printByteArray(selectPPSE,sizeof(selectPPSE),"cmd");
+ //printByteArray(pbRecvBuffer,dwRecvLength, "response");
 
  if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable)
    getMoreBytes();
+
+ //DEBUG
+ //printByteArray(pbRecvBuffer,dwRecvLength, "response");
 
   struct byteStream selectPpseResponse;
   selectPpseResponse.length=dwRecvLength;
@@ -102,6 +100,8 @@ printf("reader name: %s\n", mszReaders);
   //DEBUG
   //printAllTags(anzPPSE, outPPSE);
 
+  //print name of credit institute
+  printApplicationLabel(anzPPSE, outPPSE);
  
   for (int i = 0; i < anzPPSE; i++)
     {
@@ -118,18 +118,15 @@ printf("reader name: %s\n", mszReaders);
       selectFileCC[4] = (BYTE) outPPSE[i].length;
       memcpy(selectFileCC+5 , outPPSE[i].value, outPPSE[i].length);
       
-      printf("cmd: ");
-      for(i=0; i < sizeof(selectFileCC); i++)
-        printf("%02X ", selectFileCC[i]);
-
+     
       dwRecvLength=sizeof(pbRecvBuffer);
       rv = SCardTransmit(hCard, &pioSendPci, selectFileCC, sizeof(selectFileCC), NULL,
       pbRecvBuffer,&dwRecvLength);
 
-      printf("response: ");
-      for(int i=0; i<dwRecvLength; i++){
-        printf("%02X ", pbRecvBuffer[i]);
-      }
+      //DEBUG 
+      //printByteArray(selectFileCC,sizeof(selectFileCC),"cmd");
+      //printByteArray(pbRecvBuffer,dwRecvLength, "response");
+      
       printf("\n");
       // Pruefen auf 90 00 !!!! TODO
 
@@ -141,32 +138,20 @@ printf("reader name: %s\n", mszReaders);
       rv = SCardTransmit(hCard, &pioSendPci, readRecordCC, sizeof(readRecordCC), NULL,
       pbRecvBuffer,&dwRecvLength);
 
-      printf("cmd: ");
-      for(int i=0; i < sizeof(readRecordCC); i++)
-        printf("%02X ", readRecordCC[i]);
+      //DEBUG 
+      //printByteArray(readRecordCC,sizeof(readRecordCC),"cmd");
+      //printByteArray(pbRecvBuffer,dwRecvLength, "response");
 
-      printf("response: ");
-      for(int i=0; i<dwRecvLength; i++)
-        printf("%02X ", pbRecvBuffer[i]);
-      printf("\n");
-
-       
        if (pbRecvBuffer[dwRecvLength -2] == wrongLength){
          BYTE readRecordCC[] = {0x00, 0xB2, 0x02, 0x0C, pbRecvBuffer[dwRecvLength-1]};
          dwRecvLength = sizeof(pbRecvBuffer);
          rv = SCardTransmit(hCard, &pioSendPci, readRecordCC, sizeof(readRecordCC), NULL,
          pbRecvBuffer,&dwRecvLength);
      
-         printf("cmd: ");
-         for(int i=0; i < sizeof(readRecordCC); i++)
-           printf("%02X ", readRecordCC[i]);
-
-         printf("response: ");
-         for(int i=0; i<dwRecvLength; i++)
-           printf("%02X ", pbRecvBuffer[i]);
-         printf("\n");
+         //DEBUG 
+         //printByteArray(readRecordCC,sizeof(readRecordCC),"cmd");
+         //printByteArray(pbRecvBuffer,dwRecvLength, "response");
        }
-
 
       if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable)
         getMoreBytes();
@@ -204,6 +189,39 @@ printf("reader name: %s\n", mszReaders);
 
  return 0;
 }
+
+void printByteArray(BYTE cmd[], int size, char name[])
+  {
+  printf("%s: ",name);
+  for(int i=0; i< size; i++)
+  printf("%02X ", cmd[i]);
+  printf("\n");
+  }
+
+void printApplicationLabel(int anzPPSE, struct byteStream outPPSE[])
+  {
+  for (int i = 0; i < anzPPSE; i++)
+      {
+      if (strcmp(outPPSE[i].tag.name,"Application Label") == 0)
+        {
+        printf("\n");
+        printf("PPSE TAG: %s (name of credit institute)\n",outPPSE[i].tag.name);
+        printf("PPSE TEXT : ");
+        for (int k = 0; k < outPPSE[i].length; k++)
+          {
+          if(outPPSE[i].value[k] >= 32 && outPPSE[i].value[k] <= 126 )
+            {
+            printf(" %c",outPPSE[i].value[k]);
+            }
+          else
+            {
+            printf("  ");
+            }
+          }
+        printf("\n");
+        }
+      }
+  }
 
 void printAllTags(int anzPPSE, struct byteStream outPPSE[])
   {
@@ -243,16 +261,8 @@ void getMoreBytes()
    dwRecvLength=sizeof(pbRecvBuffer);
    SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
      pbRecvBuffer,&dwRecvLength);
-
-   printf("cmd: ");
-   for(i=0; i < getResponseLength; i++)
-     printf("%02X ", myGetResponse[i]);
-
-   printf("response: ");
-   for(i=0; i<dwRecvLength; i++)
-     printf("%02X ", pbRecvBuffer[i]);
-   printf("\n");
-
+   //DEBUG
+   //printByteArray(myGetResponse,getResponseLength,"cmd");
   }
 
 void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream)
