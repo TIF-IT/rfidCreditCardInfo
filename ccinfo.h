@@ -66,6 +66,8 @@ struct byteStream {
   struct emvTag tag;
 };
 
+
+void printAllTags(int anzPPSE, struct byteStream outPPSE[]);
 int getByteStream(struct byteStream *ccStream, struct byteStream input, struct emvTag id);
 void getMoreBytes();
 bool isOneByteTlv (struct byteStream tlvStream);

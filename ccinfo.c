@@ -23,87 +23,16 @@ int main(void)
 
  SCARDCONTEXT hContext;
  LPTSTR mszReaders;
- SCARDHANDLE hCard;
- DWORD dwReaders, dwActiveProtocol, dwRecvLength;
-
- SCARD_IO_REQUEST pioSendPci;
-
  unsigned int i;
 
-//#################
-//oneByte 1
-//TAG: File Control Information (FCI) Template 
-//######
-//TEST 2a356ea8: 84 0E 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 A5 21 BF 0C 1E 61 1C 4F 07 A0 00 00 00 03 10 10 50 0E 63 6F 6D 64 69 72 65 63 74 20 56 69 73 61 87 01 01 
-//oneByte 1
-//TAG: Dedicated File (DF) Name 
-//######
-//TEST2 2a356e48: 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 
-/*
-struct byteStream test;
-BYTE testInput[] = { 0x6F, 0x33 , 0x84 , 0x0E , 0x32 , 0x50 , 0x41 , 0x59 , 0x2E , 0x53 , 0x59 , 0x53 , 0x2E , 0x44 , 0x44 , 0x46 , 0x30 , 0x31 , 0xA5 , 0x21 , 0xBF , 0x0C , 0x1E , 0x61 , 0x1C , 0x4F , 0x07 , 0xA0 , 0x00 , 0x00 , 0x00 , 0x03 , 0x10 , 0x10 , 0x50 , 0x0E , 0x63 , 0x6F , 0x6D , 0x64 , 0x69 , 0x72 , 0x65 , 0x63 , 0x74 , 0x20 , 0x56 , 0x69 , 0x73 , 0x61 , 0x87 , 0x01 , 0x01 , 0x90 , 0x00};
-
-struct byteStream testInputStream;
-testInputStream.length=51;
-testInputStream.value = testInput;
-
-//
-struct byteStream out[64];
-int anzAll = 0;
-printf("\nSTART FIND ALL TAGS\n");
-findAllTags(testInputStream,&out,&anzAll);
-for (int i = 0; i < anzAll; i++)
-  {
-  printf("\n\n");
-  printf("TAG: %s\n",out[i].tag.name);
-  printf("length: %i\n",out[i].length);
-  printf("HEX  : ");
-  for (int k = 0; k < out[i].length; k++)
-    {
-    printf("%02X, ",out[i].value[k]);
+char* replace_char(char* str, char find, char replace){
+    char *current_pos = strchr(str,find);
+    while (current_pos){
+        *current_pos = replace;
+        current_pos = strchr(current_pos,find);
     }
-  printf("\n");
-  printf("TEXT : ");
-  for (int k = 0; k < out[i].length; k++)
-    {
-    if(out[i].value[k] >= 32 && out[i].value[k] <= 126 )
-      {
-      printf(" %c, ",out[i].value[k]);
-      }
-    else
-      {
-      printf("  , ");
-      }
-    }
-  printf("\n");
-  }
-printf("###################################################################\n");
-*/
-
-//
-/*
-printf("oneByte %i",isOneByteTlv(testInputStream));
-printf("\nTAG: %s \n",getEmvTag(testInputStream).name);
-
-getByteStream(&test,testInputStream,getEmvTag(testInputStream));
-printf("######\n");
- printf("TEST %0x: ",&test.length);
- for(i=0; i < test.length; i++)
-   printf("%02X ",test.value[i]);
- printf("\n");
-
-printf("oneByte %i",isOneByteTlv(test));
-printf("\nTAG: %s \n",getEmvTag(test).name);
-
-struct byteStream test2;
-getByteStream(&test2,test,getEmvTag(test));
-printf("######\n");
- printf("TEST2 %0x: ",&test2.length);
- for(i=0; i < test2.length; i++)
-   printf("%02X ",test2.value[i]);
- printf("\n");
-*/
-//#################
+    return str;
+}
 
  rv = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
  CHECK("SCardEstablishContext", rv)
@@ -122,16 +51,7 @@ printf("######\n");
  CHECK("SCardListReaders", rv)
 #endif
 
-*(mszReaders + strlen(mszReaders) + 1)  = ";";
-
-char *ptr;
-ptr = strtok(mszReaders, ";");
-
-while(ptr != NULL) {
-	printf("reader name: %s\n", ptr);
-	// naechsten Abschnitt erstellen
- 	ptr = strtok(NULL, ";");
-}
+printf("reader name: %s\n", mszReaders);
 
  rv = SCardConnect(hContext, mszReaders, SCARD_SHARE_SHARED,
   SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &hCard, &dwActiveProtocol);
@@ -167,24 +87,9 @@ while(ptr != NULL) {
   printf("%02X ", pbRecvBuffer[i]);
  printf("\n");
 
- if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
-   BYTE myGetResponse[5];
-   memcpy(myGetResponse,getResponse,getResponseLength);
-   myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
-   dwRecvLength=sizeof(pbRecvBuffer);
-   rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
-     pbRecvBuffer,&dwRecvLength);
+ if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable)
+   getMoreBytes();
 
-   printf("cmd: ");
-   for(i=0; i < getResponseLength; i++)
-     printf("%02X ", myGetResponse[i]);
-
-   printf("response: ");
-   for(i=0; i<dwRecvLength; i++)
-     printf("%02X ", pbRecvBuffer[i]);
-   printf("\n");
-  }
- 
   struct byteStream selectPpseResponse;
   selectPpseResponse.length=dwRecvLength;
   selectPpseResponse.value = (BYTE*)malloc(selectPpseResponse.length);
@@ -194,39 +99,16 @@ while(ptr != NULL) {
   int anzPPSE = 0;
 
   findAllTags(selectPpseResponse,&outPPSE,&anzPPSE);
-  for (int i = 0; i < anzPPSE; i++)
-    {
-    printf("\n\n");
-    printf("PPSE TAG: %s\n",outPPSE[i].tag.name);
-    printf("PPSE length: %i\n",outPPSE[i].length);
-    printf("PPSE HEX  : ");
-    for (int k = 0; k < outPPSE[i].length; k++)
-      {
-      printf("%02X, ",outPPSE[i].value[k]);
-      }
-    printf("\n");
-    printf("PPSE TEXT : ");
-    for (int k = 0; k < outPPSE[i].length; k++)
-      {
-      if(outPPSE[i].value[k] >= 32 && outPPSE[i].value[k] <= 126 )
-        {
-        printf(" %c, ",outPPSE[i].value[k]);
-        }
-      else
-        {
-        printf("  , ");
-        }
-      }
-    printf("\n");
-    }
+  //DEBUG
+  //printAllTags(anzPPSE, outPPSE);
 
+ 
   for (int i = 0; i < anzPPSE; i++)
     {
     if(strcmp(outPPSE[i].tag.name,"Application Identifier (AID) – card") == 0) 
       {
       BYTE aid[outPPSE[i].length];
       memcpy(aid,outPPSE[i].value,outPPSE[i].length);
-      
       
       BYTE selectFileCC[outPPSE[i].length + 6]; 
       selectFileCC[0] = cla; 
@@ -250,30 +132,15 @@ while(ptr != NULL) {
       }
       printf("\n");
       // Pruefen auf 90 00 !!!! TODO
-      if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
-        BYTE myGetResponse[5];
-        memcpy(myGetResponse,getResponse,getResponseLength);
-        myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
-        dwRecvLength=sizeof(pbRecvBuffer);
-        rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
-        pbRecvBuffer,&dwRecvLength);
 
-        printf("cmd: ");
-        for(int i=0; i < getResponseLength; i++)
-          printf("%02X ", myGetResponse[i]);
-
-        printf("response: ");
-        for(int i=0; i<dwRecvLength; i++)
-           printf("%02X ", pbRecvBuffer[i]);
-        printf("\n");
-      }
+      if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable)
+        getMoreBytes();
 
       BYTE readRecordCC[] = {0x00, 0xB2, 0x02, 0x0C, 0x00};
       dwRecvLength = sizeof(pbRecvBuffer);
       rv = SCardTransmit(hCard, &pioSendPci, readRecordCC, sizeof(readRecordCC), NULL,
       pbRecvBuffer,&dwRecvLength);
 
-     
       printf("cmd: ");
       for(int i=0; i < sizeof(readRecordCC); i++)
         printf("%02X ", readRecordCC[i]);
@@ -300,23 +167,9 @@ while(ptr != NULL) {
          printf("\n");
        }
 
-       if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable){
-        BYTE myGetResponse[5];
-        memcpy(myGetResponse,getResponse,getResponseLength);
-        myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
-        dwRecvLength=sizeof(pbRecvBuffer);
-        rv = SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
-        pbRecvBuffer,&dwRecvLength);
 
-        printf("cmd: ");
-        for(int i=0; i < getResponseLength; i++)
-          printf("%02X ", myGetResponse[i]);
-
-        printf("response: ");
-        for(int i=0; i<dwRecvLength; i++)
-           printf("%02X ", pbRecvBuffer[i]);
-        printf("\n");
-      }
+      if (pbRecvBuffer[dwRecvLength -2] == bytesAvailable)
+        getMoreBytes();
 
      for (int k = 0; k < dwRecvLength; k++)
       {
@@ -352,14 +205,54 @@ while(ptr != NULL) {
  return 0;
 }
 
-void getMoreBytes(SCARDHANDLE card, SCARD_IO_REQUEST pioSendPci,DWORD dwRecvLength)
+void printAllTags(int anzPPSE, struct byteStream outPPSE[])
   {
-  BYTE myGetResponse[5];
-  memcpy(myGetResponse,getResponse,getResponseLength);
-  myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
-  dwRecvLength=sizeof(pbRecvBuffer);
-  SCardTransmit(card, &pioSendPci, myGetResponse, getResponseLength, NULL,
-  pbRecvBuffer,&dwRecvLength);
+  for (int i = 0; i < anzPPSE; i++)
+      {
+      printf("\n\n");
+      printf("PPSE TAG: %s\n",outPPSE[i].tag.name);
+      printf("PPSE length: %i\n",outPPSE[i].length);
+      printf("PPSE HEX  : ");
+      for (int k = 0; k < outPPSE[i].length; k++)
+        {
+        printf("%02X, ",outPPSE[i].value[k]);
+        }
+      printf("\n");
+      printf("PPSE TEXT : ");
+      for (int k = 0; k < outPPSE[i].length; k++)
+        {
+        if(outPPSE[i].value[k] >= 32 && outPPSE[i].value[k] <= 126 )
+          {
+          printf(" %c, ",outPPSE[i].value[k]);
+          }
+        else
+          {
+          printf("  , ");
+          }
+        }
+      printf("\n");
+      }
+  }
+
+void getMoreBytes()
+  {
+   int i=0;
+   BYTE myGetResponse[5];
+   memcpy(myGetResponse,getResponse,getResponseLength);
+   myGetResponse[4]=pbRecvBuffer[dwRecvLength-1];
+   dwRecvLength=sizeof(pbRecvBuffer);
+   SCardTransmit(hCard, &pioSendPci, myGetResponse, getResponseLength, NULL,
+     pbRecvBuffer,&dwRecvLength);
+
+   printf("cmd: ");
+   for(i=0; i < getResponseLength; i++)
+     printf("%02X ", myGetResponse[i]);
+
+   printf("response: ");
+   for(i=0; i<dwRecvLength; i++)
+     printf("%02X ", pbRecvBuffer[i]);
+   printf("\n");
+
   }
 
 void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream)
