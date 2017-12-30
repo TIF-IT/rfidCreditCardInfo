@@ -51,10 +51,15 @@ char* replace_char(char* str, char find, char replace){
  CHECK("SCardListReaders", rv)
 #endif
 
-printf("reader name: %s\n", mszReaders);
+ // select the reader
+ char reader[maxReaderNameLength];
+ if (selectReader(mszReaders, reader) != 0)
+  {
+  return(-1);
+  }
 
- rv = SCardConnect(hContext, mszReaders, SCARD_SHARE_SHARED,
-  SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &hCard, &dwActiveProtocol);
+ rv = SCardConnect(hContext, reader, SCARD_SHARE_SHARED,
+ SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &hCard, &dwActiveProtocol);
  CHECK("SCardConnect", rv)
 
  switch(dwActiveProtocol)
@@ -189,6 +194,45 @@ printf("reader name: %s\n", mszReaders);
 
  return 0;
 }
+
+
+int selectReader(LPTSTR readers, char *reader)
+  {
+  // find and display all readers
+  char readerArray[maxReaderCount][maxReaderNameLength];
+  int j_reader = 0;
+  int i_reader = 0;
+  int k_reader = 0;
+  while (i_reader < dwReaders && k_reader < maxReaderCount)
+    {
+    j_reader=0;
+    while (readers[i_reader] != 0 && i_reader < dwReaders)
+      {
+      readerArray[k_reader][j_reader] = readers[i_reader];
+      i_reader++;
+      j_reader++;
+      }
+    readerArray[k_reader][j_reader] = (char) 0;
+    printf("%i: %s\n" ,k_reader,readerArray[k_reader]);
+    i_reader++;
+    k_reader++;
+    }
+
+  char idx_reader[1];
+  printf("select reader: ");
+  fflush(stdin);
+ 
+  idx_reader[0] = getc(stdin);
+
+  if (atoi(idx_reader) < 0 || atoi(idx_reader) > k_reader)
+    {
+    fprintf( stderr, "%i is out of reader index \n",atoi(idx_reader));
+    return(-1);
+    }
+  
+  strcpy(reader,readerArray[atoi(idx_reader)]);
+  return(0);
+  }
 
 void printByteArray(BYTE cmd[], int size, char name[])
   {

@@ -14,6 +14,9 @@
 #include <winscard.h>
 #endif
 
+static int maxReaderCount = 10;
+static int maxReaderNameLength = 255;
+
 static BYTE fileControlInformationId = 0x6F;
 static BYTE dedicatedFileName = 0x84;
 static BYTE FciProp = 0xA5;
@@ -75,3 +78,4 @@ void getMoreBytes();
 bool isOneByteTlv (struct byteStream tlvStream);
 struct emvTag getEmvTag(struct byteStream ccStream);
 void findAllTags(struct byteStream ccStream, struct byteStream *outStream, int *anzOutStream);
+int selectReader(LPTSTR readers, char *reader);
